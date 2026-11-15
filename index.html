@@ -139,6 +139,17 @@ function printBodyHTML(raw){
 }
 let pagePreviewTimer=null;
 function schedulePagePreview(){clearTimeout(pagePreviewTimer);pagePreviewTimer=setTimeout(renderPagePreview,180)}
+// Nama PDF diambil dari Perihal, dipotong hanya pada batas kata.
+function pdfFileName(){
+ const raw=($('subject').value||'').normalize('NFKC').replace(/[\\/:*?"<>|\x00-\x1f]/g,' ').replace(/\s+/g,' ').trim();
+ const fallback='Surat Resmi Transwisata';
+ const subject=raw||fallback;
+ const max=110;
+ if(subject.length<=max)return subject;
+ const cut=subject.slice(0,max+1);
+ const lastSpace=cut.lastIndexOf(' ');
+ return (lastSpace>=Math.floor(max*.65)?cut.slice(0,lastSpace):subject.slice(0,max)).trim()+'…';
+}
 function buildPrintableHTML(){
  const m={left:Math.max(5,+$('marginLeft').value||20),right:Math.max(5,+$('marginRight').value||20),top:Math.max(5,+$('marginTop').value||9),bottom:Math.max(5,+$('marginBottom').value||8)};
  const logo=logoData||defaultLogo;
@@ -151,7 +162,7 @@ function buildPrintableHTML(){
  const bodyHTML=printBodyHTML($('body').value||' ');
  const first='<div class="date">Jakarta, '+printEscape(formatDate($('date').value))+'</div><div class="meta">'+metaHTML+'</div><div class="address">Kepada Yth:<br><strong>'+printEscape($('destination').value||'—')+'</strong></div>';
  const tail='<div class="signature">Hormat kami,<div class="signArea">'+sign+'</div><strong><u>'+printEscape(val('author'))+'</u></strong><div>'+printEscape($('position').value)+'</div></div>'+(cc.length?'<div class="cc"><u>Tembusan Yth:</u><ol>'+cc.map(x=>'<li>'+printEscape(x)+'</li>').join('')+'</ol></div>':'');
- return `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+ return `<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${printEscape(pdfFileName())}</title><style>
  @page{size:A4 portrait;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#e5eaf0;color:#111;font:11pt/1.42 Arial,Helvetica,sans-serif}
  .page{position:relative;width:210mm;height:297mm;background:#fff;margin:0 auto 8mm;overflow:hidden;break-after:page;page-break-after:always}
  .head{position:absolute;top:${m.top}mm;left:${Math.max(5,m.left-11)}mm;height:27mm;width:43mm;display:flex;align-items:flex-start}
@@ -218,7 +229,7 @@ function buildPrintableHTML(){
 function renderPagePreview(){const iframe=$('letterPagesFrame');if(!iframe)return;iframe.srcdoc=buildPrintableHTML()}
 function resizePagePreview(count){const frame=$('letterPagesFrame'),outer=$('letterPagesOuter');if(!frame||!outer)return;const w=outer.clientWidth;const scale=Math.min(1,(w-12)/794);frame.style.transform=`scale(${scale})`;frame.style.width='794px';frame.style.height=(count*1153+50)+'px';outer.style.height=Math.ceil((count*1153+50)*scale)+'px';$('pageCount').textContent=count+' halaman A4';}
 window.addEventListener('message',e=>{if(e.source===$('letterPagesFrame')?.contentWindow&&e.data?.type==='twa-pages')resizePagePreview(e.data.count)});
-function printLetter(){const frame=$('letterPagesFrame');if(!frame){alert('Preview belum siap');return}frame.contentWindow.focus();frame.contentWindow.print()}
+function printLetter(){const frame=$('letterPagesFrame');if(!frame||!frame.contentDocument){alert('Preview belum siap');return}const name=pdfFileName();frame.contentDocument.title=name;frame.contentWindow.focus();frame.contentWindow.print()}
 function showDashboard(){document.body.classList.remove('app-editor');document.body.classList.add('app-dashboard');window.scrollTo(0,0);renderHistory()}
 function showEditor(){document.body.classList.remove('app-dashboard');document.body.classList.add('app-editor');window.scrollTo(0,0);setTimeout(fitPreview,80)}
 function newLetter(){activeHistoryId=null;ids.forEach(id=>$(id).value='');$('date').value=today();$('inputBy').value='Capt. Ramdan';$('author').value='Capt. M. Ramdani M';$('position').value='Chief Pilot Rotary Wing';$('marginLeft').value=20;$('marginRight').value=20;$('marginTop').value=9;$('marginBottom').value=8;$('body').value='Dengan hormat,\n\n\n\nDemikian disampaikan. Atas perhatian dan kerja samanya, kami mengucapkan terima kasih.';$('ccRows').replaceChildren();signatureData='';logoData='';$('logoUpload').value='';$('signatureUpload').value='';$('footerText').value=defaultFooter;$('showFooter').checked=true;toggleCustom('inputBy');toggleCustom('author');update();showEditor()}
