@@ -229,7 +229,31 @@ function buildPrintableHTML(){
 function renderPagePreview(){const iframe=$('letterPagesFrame');if(!iframe)return;iframe.srcdoc=buildPrintableHTML()}
 function resizePagePreview(count){const frame=$('letterPagesFrame'),outer=$('letterPagesOuter');if(!frame||!outer)return;const w=outer.clientWidth;const scale=Math.min(1,(w-12)/794);frame.style.transform=`scale(${scale})`;frame.style.width='794px';frame.style.height=(count*1153+50)+'px';outer.style.height=Math.ceil((count*1153+50)*scale)+'px';$('pageCount').textContent=count+' halaman A4';}
 window.addEventListener('message',e=>{if(e.source===$('letterPagesFrame')?.contentWindow&&e.data?.type==='twa-pages')resizePagePreview(e.data.count)});
-function printLetter(){const frame=$('letterPagesFrame');if(!frame||!frame.contentDocument){alert('Preview belum siap');return}const name=pdfFileName();frame.contentDocument.title=name;frame.contentWindow.focus();frame.contentWindow.print()}
+let previousDocumentTitle=null;
+function restoreDocumentTitle(){
+ if(previousDocumentTitle!==null){document.title=previousDocumentTitle;previousDocumentTitle=null;}
+}
+window.addEventListener('afterprint',()=>setTimeout(restoreDocumentTitle,1200));
+function printLetter(){
+ const frame=$('letterPagesFrame');
+ if(!frame||!frame.contentDocument){alert('Preview belum siap');return;}
+ const name=pdfFileName();
+ // Chrome Android may name iframe print jobs using the TOP-LEVEL document title.
+ // Set both titles before invoking print, instead of only changing iframe.title.
+ if(previousDocumentTitle===null)previousDocumentTitle=document.title;
+ document.title=name;
+ frame.title=name;
+ frame.contentDocument.title=name;
+ const titleNode=frame.contentDocument.querySelector('head title');
+ if(titleNode)titleNode.textContent=name;
+ frame.contentWindow.focus();
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+   try{frame.contentWindow.print();}
+   catch(err){restoreDocumentTitle();alert('Tidak dapat membuka dialog cetak: '+err.message);}
+   // Some Android browsers do not dispatch afterprint for iframe print jobs.
+   setTimeout(restoreDocumentTitle,15000);
+ }));
+}
 function showDashboard(){document.body.classList.remove('app-editor');document.body.classList.add('app-dashboard');window.scrollTo(0,0);renderHistory()}
 function showEditor(){document.body.classList.remove('app-dashboard');document.body.classList.add('app-editor');window.scrollTo(0,0);setTimeout(fitPreview,80)}
 function newLetter(){activeHistoryId=null;ids.forEach(id=>$(id).value='');$('date').value=today();$('inputBy').value='Capt. Ramdan';$('author').value='Capt. M. Ramdani M';$('position').value='Chief Pilot Rotary Wing';$('marginLeft').value=20;$('marginRight').value=20;$('marginTop').value=9;$('marginBottom').value=8;$('body').value='Dengan hormat,\n\n\n\nDemikian disampaikan. Atas perhatian dan kerja samanya, kami mengucapkan terima kasih.';$('ccRows').replaceChildren();signatureData='';logoData='';$('logoUpload').value='';$('signatureUpload').value='';$('footerText').value=defaultFooter;$('showFooter').checked=true;toggleCustom('inputBy');toggleCustom('author');update();showEditor()}
