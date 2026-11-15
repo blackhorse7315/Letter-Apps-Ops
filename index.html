@@ -59,6 +59,30 @@ html,body{width:210mm!important;background:white!important;overflow:visible!impo
 .dashboard{max-width:1150px;margin:22px auto;padding:0 18px}.dashHeading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}.dashHeading h2{margin:0;font-size:23px}.dashHeading p{color:#64748b;font-size:14px;margin:7px 0 0}.dashSearch{display:flex;gap:10px;margin-bottom:18px}.dashSearch input{flex:1;min-width:0}.dashboardHistory{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}.dashboardHistory .historyItem{margin:0;min-width:0}.dashboardHistory .historyItem strong{overflow-wrap:anywhere}.dashboardHistory .historyItem .btn{font-size:12px}.app-dashboard .shell{display:none}.app-editor #dashboard{display:none}.app-dashboard .top .buttons button:not(:first-child){display:none}.app-editor .editor #historyList{display:none}.app-editor .editor .historyHeading{display:none}
 @media(max-width:700px){.dashboard{padding:0 10px;margin:14px auto}.dashHeading{align-items:stretch}.dashHeading button{width:100%}.dashSearch{flex-direction:column}.dashboardHistory{grid-template-columns:1fr}}
 @media print{#dashboard{display:none!important}.app-dashboard .shell,.app-editor .shell{display:block!important}.top{display:none!important}}
+</style><style id="aligned-preview-v12">
+#pBody .alignedList{border-collapse:collapse;table-layout:auto;width:auto;max-width:100%;margin:4mm 0 4mm 7mm;text-align:left;font:inherit;break-inside:avoid}
+#pBody .alignedList td{vertical-align:top;padding:0 3mm 0 0;text-align:left;white-space:normal}
+#pBody .alignedList .seq{white-space:nowrap;padding-right:4mm}
+#pBody .alignedList .term{white-space:nowrap;font-weight:bold}
+#pBody .alignedList .colon{white-space:nowrap;padding-right:2mm}
+#pBody p{margin:0;text-align:justify}
+#pBody .paragraphGap{height:5mm}
+@media print{#pBody .alignedList{break-inside:avoid}}
+</style><style id="v13-justify-subject-destination">
+/* Align both sides of multi-line subject and recipient text in preview and print. */
+#paper #pSubject, #paper #pDestination {
+  text-align:justify!important;
+  text-align-last:left!important;
+  white-space:pre-line!important;
+  overflow-wrap:break-word!important;
+  word-break:normal!important;
+  hyphens:none!important;
+}
+#paper #pSubject {display:block!important;min-width:0!important;}
+#paper #pDestination {display:block!important;max-width:100%!important;}
+@media print {
+  #paper #pSubject, #paper #pDestination {text-align:justify!important;text-align-last:left!important;white-space:pre-line!important;}
+}
 </style></head><body class="app-dashboard">
 <header class="top"><div><h1>TRANSWISATA <span style="font-weight:400">| Official Letter Generator</span></h1><small>PT. Transwisata Prima Aviation · Surat resmi A4 portrait</small></div><div class="buttons"><button class="btn" onclick="showDashboard()">Dashboard</button><button class="btn secondary" onclick="saveDraft()">Simpan Draft</button><button class="btn primary" onclick="printLetter()">Print / Save PDF</button></div></header>
 <section id="dashboard" class="dashboard"><div class="dashHeading"><div><h2>Arsip Surat Resmi</h2><p>Daftar surat yang tersimpan di Firebase. Pilih surat untuk melihat, mengedit, atau menyalinnya.</p></div><button class="btn primary" onclick="newLetter()">+ Buat Surat Baru</button></div><div class="panel"><div class="dashSearch"><input id="searchLetters" placeholder="Cari nomor surat, perihal, atau pembuat..." oninput="renderHistory()"><button class="btn" onclick="refreshCloudHistory()">Refresh</button></div><div id="dashboardHistory" class="dashboardHistory">Menghubungkan ke Firebase...</div></div></section>
@@ -81,7 +105,7 @@ let signatureData="";let logoData="";const defaultLogo=document.getElementById('
 function resetLogo(){logoData='';$('logoUpload').value='';update()}
 $('logoUpload').addEventListener('change',e=>{const file=e.target.files[0];if(!file)return;if(file.size>1500000){alert('Logo maksimal 1,5 MB');e.target.value='';return}const reader=new FileReader();reader.onload=()=>{logoData=reader.result;update()};reader.readAsDataURL(file)});
 function updateMargins(){const vals={marginLeft:20,marginRight:20,marginTop:9,marginBottom:8};const out={};for(const [id,def] of Object.entries(vals)){const n=Number($(id).value);out[id]=Number.isFinite(n)&&n>=5&&n<=60?n:def}const paper=$('paper');paper.style.setProperty('padding',`${out.marginTop}mm ${out.marginRight}mm ${out.marginBottom}mm ${out.marginLeft}mm`,'important');paper.style.setProperty('--logo-offset',`${-Math.min(11,out.marginLeft-5)}mm`);}
-function update(){updateMargins();$('pLogo').src=logoData||defaultLogo;let values={pDate:'Jakarta, '+formatDate($('date').value),pNumber:$('number').value||'—',pAttachment:$('attachment').value||'—',pSubject:$('subject').value||'—',pDestination:$('destination').value||'—',pBody:$('body').value||' ',pAuthor:val('author')||'—',pPosition:$('position').value||'—'};for(let [id,v] of Object.entries(values))$(id).textContent=v;const att=$('pAttachment');[att,att.previousElementSibling,att.previousElementSibling.previousElementSibling].forEach(el=>el.style.display=$('attachment').value.trim()?'':'none');let cc=[...document.querySelectorAll('#ccRows input')].map(x=>x.value.trim()).filter(Boolean);$('pCCWrap').style.display=cc.length?'block':'none';$('pFooter').textContent=$('footerText').value;$('pFooter').style.display=$('showFooter').checked&&$('footerText').value.trim()?'block':'none';$('pSignature').style.display=signatureData?'block':'none';if(signatureData)$('pSignature').src=signatureData;$('pCC').replaceChildren(...cc.map(t=>{let li=document.createElement('li');li.textContent=t;return li}));requestAnimationFrame(fitPreview);}
+function update(){updateMargins();$('pLogo').src=logoData||defaultLogo;let values={pDate:'Jakarta, '+formatDate($('date').value),pNumber:$('number').value||'—',pAttachment:$('attachment').value||'—',pSubject:$('subject').value||'—',pDestination:$('destination').value||'—',pBody:$('body').value||' ',pAuthor:val('author')||'—',pPosition:$('position').value||'—'};for(let [id,v] of Object.entries(values))$(id).textContent=v; $('pBody').innerHTML=printBodyHTML($('body').value||' ');const att=$('pAttachment');[att,att.previousElementSibling,att.previousElementSibling.previousElementSibling].forEach(el=>el.style.display=$('attachment').value.trim()?'':'none');let cc=[...document.querySelectorAll('#ccRows input')].map(x=>x.value.trim()).filter(Boolean);$('pCCWrap').style.display=cc.length?'block':'none';$('pFooter').textContent=$('footerText').value;$('pFooter').style.display=$('showFooter').checked&&$('footerText').value.trim()?'block':'none';$('pSignature').style.display=signatureData?'block':'none';if(signatureData)$('pSignature').src=signatureData;$('pCC').replaceChildren(...cc.map(t=>{let li=document.createElement('li');li.textContent=t;return li}));requestAnimationFrame(fitPreview);}
 function fitPreview(){const wrap=$('previewWrap'),paper=$('paper');if(!wrap||!paper)return;paper.style.transform='none';wrap.style.height='auto';const available=wrap.clientWidth- (window.innerWidth<=700?16:24);const scale=Math.min(1,available/paper.offsetWidth);paper.style.transform=`scale(${scale})`;wrap.style.height=Math.ceil(paper.scrollHeight*scale+(window.innerWidth<=700?16:24))+'px';}
 window.addEventListener('resize',fitPreview);window.addEventListener('afterprint',fitPreview);
 function collect(){let obj=Object.fromEntries(ids.map(id=>[id,$(id).value]));obj.cc=[...document.querySelectorAll('#ccRows input')].map(x=>x.value);obj.signature=signatureData;obj.logo=logoData;obj.showFooter=$('showFooter').checked;return obj}function saveDraft(){let obj=collect();localStorage.setItem('twa_official_letter_draft',JSON.stringify(obj));$('status').textContent='Draft tersimpan di browser perangkat ini.'}
@@ -101,7 +125,7 @@ function renderHistory(){const root=$('historyList');root.replaceChildren();cons
 function printEscape(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 function printBodyHTML(raw){
  const lines=String(raw||'').replace(/\r/g,'').split('\n');let out=[],i=0;
- const pattern=/^\s*((?:[a-zA-Z]|\d+)[.)])\s+(.+?)\s*:\s*(.*)$/;
+ const pattern=/^\s*((?:[a-zA-Z]|\d+)[.)])\s*(\S.*?)\s*:\s*(.*)$/;
  while(i<lines.length){
   if(pattern.test(lines[i])){
    let rows=[];while(i<lines.length&&pattern.test(lines[i])){let m=lines[i].match(pattern);rows.push(m);i++}
