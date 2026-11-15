@@ -67,7 +67,7 @@ html,body{width:210mm!important;background:white!important;overflow:visible!impo
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
-const firebaseConfig={apiKey:"AIzaSyD1lOduspyEcs3QxGQhplkOtVA0WQID_TM",authDomain:"cuti-apps-twa.firebaseapp.com",projectId:"cuti-apps-twa",storageBucket:"cuti-apps-twa.firebasestorage.app",messagingSenderId:"460990981144",appId:"1:460990981144:web:1e20e915668747004ecf6d",measurementId:"G-PMC4SEFCX6"};
+const firebaseConfig={apiKey:"AIzaSyBK8_JZ1d0SORUSuHKtatoiQ5F_Z-7r8T0",authDomain:"gen-lang-client-0159557626.firebaseapp.com",projectId:"gen-lang-client-0159557626",storageBucket:"gen-lang-client-0159557626.firebasestorage.app",messagingSenderId:"944205168021",appId:"1:944205168021:web:a300a5ba0b97f0f979ca9c",measurementId:"G-4VHDM91WE6"};
 let db=null, cloudReady=false, cloudEntries=[];
 try{firebase.initializeApp(firebaseConfig);db=firebase.firestore();}catch(e){console.warn('Firebase unavailable',e)}
 const cloudCollection=()=>db.collection('transwisataOfficialLetters');
@@ -97,7 +97,55 @@ function restoreEntry(data){ids.forEach(id=>$(id).value=data[id]??'');signatureD
 function openHistory(id,copy=false){const entry=getHistory().find(x=>x.id===id);if(!entry)return;restoreEntry(entry.data);activeHistoryId=copy?null:id;$('status').textContent=copy?'Salinan dibuka; simpan untuk membuat arsip baru.':'Arsip dibuka untuk diedit.';showEditor()}
 async function deleteHistory(id){if(!confirm('Hapus surat ini dari Firebase? Penghapusan berlaku untuk semua pengguna.'))return;try{await cloudCollection().doc(id).delete();if(activeHistoryId===id)activeHistoryId=null;await refreshCloudHistory()}catch(e){alert('Gagal menghapus: '+e.message)}}
 function renderHistory(){const root=$('historyList');root.replaceChildren();const dash=$('dashboardHistory');dash.replaceChildren();const query=($('searchLetters')?.value||'').toLowerCase().trim();const arr=getHistory().filter(e=>!query||[e.data?.subject,e.data?.number,e.data?.inputBy,e.data?.author].some(v=>String(v||'').toLowerCase().includes(query)));if(!arr.length){root.textContent=cloudReady?'Belum ada surat tersimpan.':'Menghubungkan ke Firebase…';dash.textContent=cloudReady?'Belum ada surat yang cocok atau tersimpan. Klik Buat Surat Baru.':'Menghubungkan ke Firebase…';return}arr.forEach(entry=>{const d=entry.data||{};const box=document.createElement('div');box.className='historyItem';const strong=document.createElement('strong');strong.textContent=d.subject||'(Tanpa perihal)';const small=document.createElement('small');small.textContent=(d.number||'Tanpa nomor')+' · '+formatDate(d.date)+' · '+new Date(entry.updated).toLocaleString('id-ID');const buttons=document.createElement('div');buttons.className='buttons';[['Buka / Edit',()=>openHistory(entry.id)],['Copy Surat',()=>openHistory(entry.id,true)],['Hapus',()=>deleteHistory(entry.id)]].forEach(([name,fn])=>{const b=document.createElement('button');b.className='btn';b.textContent=name;b.onclick=fn;buttons.append(b)});box.append(strong,small,buttons);root.append(box);dash.append(box.cloneNode(true));const clone=dash.lastElementChild;const originalButtons=box.querySelectorAll("button");clone.querySelectorAll("button").forEach((b,i)=>b.onclick=originalButtons[i].onclick)})}
-function printLetter(){showEditor();setTimeout(()=>window.print(),120)}
+// Dedicated print document: repeated letterhead/footer and aligned colon lists.
+function printEscape(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function printBodyHTML(raw){
+ const lines=String(raw||'').replace(/\r/g,'').split('\n');let out=[],i=0;
+ const pattern=/^\s*((?:[a-zA-Z]|\d+)[.)])\s+(.+?)\s*:\s*(.*)$/;
+ while(i<lines.length){
+  if(pattern.test(lines[i])){
+   let rows=[];while(i<lines.length&&pattern.test(lines[i])){let m=lines[i].match(pattern);rows.push(m);i++}
+   out.push('<table class="alignedList"><tbody>'+rows.map(m=>'<tr><td class="seq">'+printEscape(m[1])+'</td><td class="term">'+printEscape(m[2])+'</td><td class="colon">:</td><td>'+printEscape(m[3])+'</td></tr>').join('')+'</tbody></table>');continue;
+  }
+  if(!lines[i].trim()){out.push('<div class="paragraphGap"></div>');i++;continue}
+  let paragraph=[];while(i<lines.length&&lines[i].trim()&&!pattern.test(lines[i]))paragraph.push(lines[i++]);
+  out.push('<p>'+printEscape(paragraph.join(' '))+'</p>');
+ }
+ return out.join('');
+}
+function printLetter(){
+ update();const m={left:+$('marginLeft').value||20,right:+$('marginRight').value||20,top:+$('marginTop').value||9,bottom:+$('marginBottom').value||8};
+ const logo=logoData||defaultLogo,cc=[...document.querySelectorAll('#ccRows input')].map(x=>x.value.trim()).filter(Boolean);
+ const meta=[['Nomor',$('number').value],...($('attachment').value.trim()?[['Lampiran',$('attachment').value]]:[]),['Perihal',$('subject').value]];
+ const metaHTML=meta.map(([k,v])=>'<div class="metaRow"><span>'+k+'</span><span>:</span><span class="'+(k==='Perihal'?'subject':'')+'">'+printEscape(v||'—')+'</span></div>').join('');
+ const footerOn=$('showFooter').checked&&$('footerText').value.trim();
+ const footer=footerOn?'<div class="fixedFooter">'+printEscape($('footerText').value).replace(/\n/g,'<br>')+'</div>':'';
+ const sign=signatureData?'<img class="signImage" src="'+signatureData+'">':'';
+ const html=`<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Surat ${printEscape($('number').value||'Transwisata')}</title><style>
+ @page{size:A4 portrait;margin:${Math.max(m.top,37)}mm ${m.right}mm ${Math.max(m.bottom,footerOn?25:12)}mm ${m.left}mm}
+ *{box-sizing:border-box}html,body{margin:0;padding:0;color:#111;background:#fff;font:11pt/1.42 Arial,Helvetica,sans-serif}
+ .fixedHead{position:fixed;top:-${Math.max(m.top,37)-m.top}mm;left:0;right:0;height:27mm}
+ .fixedHead img{display:block;width:37mm;height:26mm;object-fit:contain;object-position:left top;margin-left:-${Math.min(11,Math.max(0,m.left-5))}mm}
+ .fixedFooter{position:fixed;bottom:-${Math.max(m.bottom,footerOn?25:12)-m.bottom-2}mm;left:0;right:0;text-align:center;font:bold 8pt/1.25 Arial;overflow-wrap:anywhere}
+ .date{margin:0 0 7mm}.metaRow{display:grid;grid-template-columns:19mm 5mm minmax(0,1fr);break-inside:avoid}.subject{font-weight:bold}
+ .address{margin-top:18mm;white-space:pre-line}.address strong{font-weight:600}
+ .body{margin-top:12mm;text-align:justify;overflow-wrap:anywhere}.body p{margin:0;text-align:justify}.paragraphGap{height:5mm}
+ .alignedList{border-collapse:collapse;margin:5mm 0 5mm 7mm;max-width:100%;text-align:left;break-inside:avoid}
+ .alignedList td{vertical-align:top;padding:0 3mm 0 0}.alignedList .seq{white-space:nowrap;padding-right:4mm}.alignedList .term{white-space:nowrap;font-weight:bold}.alignedList .colon{padding-right:2mm}
+ .signature{margin-top:7mm;break-inside:avoid}.signArea{height:20mm;display:flex;align-items:center}.signImage{max-height:22mm;max-width:68mm;object-fit:contain}
+ .cc{margin-top:7mm;break-inside:avoid}.cc ol{padding-left:8mm;margin:1mm 0 0}
+ @media screen{body{max-width:210mm;margin:auto;padding:10mm;box-shadow:0 0 8px #ccc}.fixedHead,.fixedFooter{position:static}.fixedHead{height:27mm}.fixedFooter{margin-top:15mm}}
+ </style></head><body><div class="fixedHead"><img src="${logo}"></div>${footer}
+ <div class="date">Jakarta, ${printEscape(formatDate($('date').value))}</div><div>${metaHTML}</div>
+ <div class="address">Kepada Yth:<br><strong>${printEscape($('destination').value||'—').replace(/\n/g,'<br>')}</strong></div>
+ <div class="body">${printBodyHTML($('body').value)}</div>
+ <div class="signature">Hormat kami,<div class="signArea">${sign}</div><strong><u>${printEscape(val('author'))}</u></strong><div>${printEscape($('position').value)}</div></div>
+ ${cc.length?'<div class="cc"><u>Tembusan Yth:</u><ol>'+cc.map(x=>'<li>'+printEscape(x)+'</li>').join('')+'</ol></div>':''}
+ </body></html>`;
+ const frame=document.createElement('iframe');frame.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;opacity:0;pointer-events:none';document.body.appendChild(frame);
+ frame.onload=()=>{setTimeout(()=>{try{frame.contentWindow.focus();frame.contentWindow.print()}catch(e){alert('Cetak tidak dapat dibuka. Coba buka aplikasi melalui Chrome.')}},350)};
+ frame.srcdoc=html;setTimeout(()=>{if(frame.isConnected)frame.remove()},120000);
+}
 function showDashboard(){document.body.classList.remove('app-editor');document.body.classList.add('app-dashboard');window.scrollTo(0,0);renderHistory()}
 function showEditor(){document.body.classList.remove('app-dashboard');document.body.classList.add('app-editor');window.scrollTo(0,0);setTimeout(fitPreview,80)}
 function newLetter(){activeHistoryId=null;ids.forEach(id=>$(id).value='');$('date').value=today();$('inputBy').value='Capt. Ramdan';$('author').value='Capt. M. Ramdani M';$('position').value='Chief Pilot Rotary Wing';$('marginLeft').value=20;$('marginRight').value=20;$('marginTop').value=9;$('marginBottom').value=8;$('body').value='Dengan hormat,\n\n\n\nDemikian disampaikan. Atas perhatian dan kerja samanya, kami mengucapkan terima kasih.';$('ccRows').replaceChildren();signatureData='';logoData='';$('logoUpload').value='';$('signatureUpload').value='';$('footerText').value=defaultFooter;$('showFooter').checked=true;toggleCustom('inputBy');toggleCustom('author');update();showEditor()}
