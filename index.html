@@ -168,24 +168,49 @@ function buildPrintableHTML(){
  </style></head><body><div id="source" style="display:none"><div id="first">${first}</div><div id="bodySource">${bodyHTML}</div><div id="tail">${tail}</div></div><script>
  const logo=${JSON.stringify(logo)},footer=${JSON.stringify(footer)};
  const makePage=()=>{let p=document.createElement('section');p.className='page';p.innerHTML='<div class="head"><img></div><div class="content"></div><div class="foot"></div>';p.querySelector('.head img').src=logo;p.querySelector('.foot').innerHTML=footer;document.body.appendChild(p);return p.querySelector('.content')};
- let target=makePage();const fits=()=>target.scrollHeight<=target.clientHeight+1;
- const append=(node)=>{target.appendChild(node);if(!fits()){target.removeChild(node);target=makePage();target.appendChild(node);return fits()}return true};
- const first=document.getElementById('first');for(const node of [...first.children])append(node.cloneNode(true));
- let body=document.createElement('div');body.className='body';append(body);
- const blocks=[...document.getElementById('bodySource').children];
- for(const block of blocks){let copy=block.cloneNode(true);body.appendChild(copy);if(fits())continue;body.removeChild(copy);
-  if(block.tagName==='P'){
-   const words=block.textContent.trim().split(/\s+/);let current=document.createElement('p');body.appendChild(current);
-   for(const word of words){let before=current.textContent;current.textContent=before?before+' '+word:word;if(!fits()){
-     current.textContent=before;if(!before){current.remove();body.remove();target=makePage();body=document.createElement('div');body.className='body';body.style.marginTop='0';target.appendChild(body);current=document.createElement('p');body.appendChild(current);current.textContent=word;}
-     else{body.remove();target=makePage();body=document.createElement('div');body.className='body';body.style.marginTop='0';target.appendChild(body);current=document.createElement('p');body.appendChild(current);current.textContent=word;}
-   }}
-  }else{
-   body.remove();target=makePage();body=document.createElement('div');body.className='body';body.style.marginTop='0';target.appendChild(body);body.appendChild(copy);
-   if(!fits()&&copy.tagName==='TABLE'){const rows=[...copy.querySelectorAll('tr')];copy.querySelector('tbody').replaceChildren();for(const row of rows){copy.querySelector('tbody').appendChild(row);if(!fits()){row.remove();body.remove();target=makePage();body=document.createElement('div');body.className='body';body.style.marginTop='0';target.appendChild(body);copy=copy.cloneNode(false);copy.innerHTML='<tbody></tbody>';body.appendChild(copy);copy.querySelector('tbody').appendChild(row)}}}
-  }
+ let target=makePage();
+ const fits=()=>target.scrollHeight<=target.clientHeight+1 && [...target.children].every(el=>el.getBoundingClientRect().bottom<=target.getBoundingClientRect().bottom+1);
+ function nextPage(){target=makePage();return target}
+ function place(node){target.appendChild(node);if(fits())return;node.remove();nextPage();target.appendChild(node)}
+ const first=document.getElementById('first');
+ for(const node of [...first.children])place(node.cloneNode(true));
+ let body=document.createElement('div');body.className='body';target.appendChild(body);
+ function newBody(){nextPage();body=document.createElement('div');body.className='body';body.style.marginTop='0';target.appendChild(body)}
+ function placeParagraph(block){
+   const words=(block.textContent||'').trim().split(/\s+/).filter(Boolean);
+   let paragraph=document.createElement('p');body.appendChild(paragraph);
+   for(const word of words){
+     const previous=paragraph.textContent;
+     paragraph.textContent=previous?previous+' '+word:word;
+     if(!fits()){
+       paragraph.textContent=previous;
+       if(!previous)paragraph.remove();
+       newBody();paragraph=document.createElement('p');body.appendChild(paragraph);paragraph.textContent=word;
+     }
+   }
  }
- const tail=document.getElementById('tail');for(const node of [...tail.children]){let copy=node.cloneNode(true);body.appendChild(copy);if(!fits()){copy.remove();body.remove();target=makePage();body=document.createElement('div');body.className='body';body.style.marginTop='0';target.appendChild(body);body.appendChild(copy)}}
+ function placeTable(block){
+   let table=block.cloneNode(false);table.innerHTML='<tbody></tbody>';body.appendChild(table);
+   for(const row of [...block.querySelectorAll('tr')]){
+     const copy=row.cloneNode(true);table.querySelector('tbody').appendChild(copy);
+     if(!fits()){
+       copy.remove();
+       if(!table.querySelector('tr'))table.remove();
+       newBody();table=block.cloneNode(false);table.innerHTML='<tbody></tbody>';body.appendChild(table);table.querySelector('tbody').appendChild(copy);
+     }
+   }
+ }
+ for(const block of [...document.getElementById('bodySource').children]){
+   if(block.tagName==='P'){placeParagraph(block);continue}
+   if(block.tagName==='TABLE'){placeTable(block);continue}
+   const copy=block.cloneNode(true);body.appendChild(copy);
+   if(!fits()){copy.remove();newBody();body.appendChild(copy)}
+ }
+ const tail=document.getElementById('tail');
+ for(const node of [...tail.children]){
+   const copy=node.cloneNode(true);body.appendChild(copy);
+   if(!fits()){copy.remove();newBody();body.appendChild(copy)}
+ }
  document.getElementById('source').remove();
  window.parent.postMessage({type:'twa-pages',count:document.querySelectorAll('.page').length},'*');
  <${'/'}script></body></html>`;
