@@ -160,7 +160,7 @@ function buildPrintableHTML(){
  .content{position:absolute;top:${m.top+32}mm;bottom:${m.bottom+(footerOn?23:2)}mm;left:${m.left}mm;right:${m.right}mm;overflow:hidden}
  .date{margin:0 0 7mm}.metaRow{display:grid;grid-template-columns:19mm 5mm minmax(0,1fr);break-inside:avoid}.subject{font-weight:bold;text-align:justify;text-align-last:left;overflow-wrap:anywhere}
  .address{margin-top:18mm;text-align:justify;text-align-last:left;white-space:normal}.address strong{font-weight:600}
- .body{margin-top:12mm;text-align:left;overflow-wrap:break-word;word-spacing:normal;letter-spacing:normal}.body p{margin:0;text-align:left;word-spacing:normal;letter-spacing:normal;white-space:normal}.paragraphGap{height:5mm}
+ .body{margin-top:12mm;text-align:justify;overflow-wrap:break-word;word-spacing:normal;letter-spacing:normal}.body p{margin:0;text-align:justify;text-align-last:left;word-spacing:normal;letter-spacing:normal;white-space:normal}.paragraphGap{height:5mm}
  .alignedList{border-collapse:collapse;margin:5mm 0 5mm 7mm;max-width:100%;text-align:left}
  .alignedList td{vertical-align:top;padding:0 3mm 0 0}.alignedList .seq{white-space:nowrap;padding-right:4mm}.alignedList .term{white-space:nowrap;font-weight:bold}.alignedList .colon{padding-right:2mm}
  .body p,.body .alignedList{font-kerning:normal;text-rendering:auto} .signature{margin-top:7mm;break-inside:avoid}.signArea{height:20mm;display:flex;align-items:center}.signImage{max-height:22mm;max-width:68mm;object-fit:contain}.cc{margin-top:7mm}.cc ol{padding-left:8mm;margin:1mm 0 0}
@@ -177,7 +177,7 @@ function buildPrintableHTML(){
  let body=document.createElement('div');body.className='body';target.appendChild(body);
  function newBody(){nextPage();body=document.createElement('div');body.className='body';body.style.marginTop='0';target.appendChild(body)}
  function placeParagraph(block){
-   const words=(block.textContent||'').trim().split(/\s+/).filter(Boolean);
+   const words=(block.textContent||'').trim().split(/\\s+/).filter(Boolean);
    let paragraph=document.createElement('p');body.appendChild(paragraph);
    for(const word of words){
      const previous=paragraph.textContent;
